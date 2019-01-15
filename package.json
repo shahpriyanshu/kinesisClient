@@ -1,0 +1,16 @@
+{
+  "name": "kinesisclient",
+  "version": "1.0.0",
+  "description": "kinenis client to read, write kinesis streams",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Priyanshu Jain",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.387.0",
+    "body-parser": "^1.18.3",
+    "express": "^4.16.4"
+  }
+}

@@ -1,0 +1,93 @@
+const express = require('express')
+const Kinesis = require('aws-sdk/clients/kinesis');
+const bodyParser = require('body-parser');
+const app = express();
+const port = 3000
+
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+const kinesis = new Kinesis({apiVersion: '2013-12-02', region: "ap-south-1"});
+
+//Some stream realted constant
+const SHARD_COUNT = 5;
+
+app.post('/putRecords', (req, res) => {
+		const StreamName = "stream_" + new Date().setHours(0, 0, 0, 0); 
+		
+		// Check if this stream is Active if not create a new Stream.
+		kinesis.describeStream({ StreamName }, (err, data) => {
+			// everything goes well here, just check for active status and push records
+			 if (data.StreamDescription.StreamStatus === 'ACTIVE') {
+				// PUT RECORDs in stream
+				if (req.body.data.length > 500) {
+					res.status(413).send({ message: 'allowed data length is 500 per second'});
+				} else {
+					const structureData = getStructureData(req.body.data, StreamName);
+					const putRecords_PARAM = {
+						Records: structureData,
+						StreamName
+					}
+					kinesis.putRecords(putRecords_PARAM, (err, data) => {
+						if(err) {
+							console.log('error while putting records', err);
+							res.status(400).send({ message: `error while inserting data in kinesis data stream: ${err}`});
+						}
+						else res.status(200).send({ message: `data has successfully inserted in  kinesis data stream: ${data}`}) 
+					})
+				}
+			}
+			if (err && err.statusCode === 400 && err.code === "ResourceNotFoundException") {
+					// create new Stream with given name
+					kinesis.createStream({
+						StreamName: StreamName,
+						ShardCount: SHARD_COUNT 
+					}, (err, data) => {
+						if(err) res.status(400).send({ message: `Error while creating new stream. ${err} ${err.stack}`})
+						else {
+						 // TODO:  need to hold new post request before stream status gets Active
+							kinesis.describeStream({ StreamName }, (err, data) => {
+								if(err) res.status(400).send('message: Error while checking stream status' + err);
+								else if (data.streamStatus === 'ACTIVE') {
+									// PUT RECORDs in stream
+									if (req.body.data.length > 500) {
+										res.status(413).send({ message: 'allowed data length is 500 per second'});
+									} else {
+										const structureData = getStructureData(req.body.data, StreamName);
+										const putRecords_PARAM = {
+											Records: structureData,
+											StreamName
+										}
+										kinesis.putRecords(putRecords_PARAM, (err, data) => {
+											if(err) res.status(400).send({ message: `error while inserting data in kinesis data stream: ${err}`});
+											else res.status(200).send({ message: `data has successfully inserted in  kinesis data stream: ${data}`}) 
+										})
+									}
+								}
+							})
+						}
+					})
+				}
+			})
+});
+
+function getStructureData(data) {
+	let sturcturedData = [];
+  let shardIndex = 1;
+	for (let i = 0; i < data.length; i++) {
+		sturcturedData.push({
+			Data: data,
+			PartitionKey: `SHARD_${shardIndex}`
+		})
+		if (shardIndex < SHARD_COUNT) {
+			shardIndex++;
+		} else {
+			shardIndex = 0;
+		}
+	}
+	return sturcturedData;
+}
+
+app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+
+
