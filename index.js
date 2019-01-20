@@ -12,18 +12,30 @@ const kinesis = new Kinesis({apiVersion: '2013-12-02', region: "ap-south-1"});
 //Some stream realted constant
 const SHARD_COUNT = 5;
 
+app.get('/getStream', (req, res) => {
+        kinesis.describeStream({ StreamName: 'stream_1547490600000' }, (err, data) => {
+                if (err) {
+                        res.send(err);
+                } else {
+                        res.send(data);
+                }
+        });
+});
+
+
 app.post('/putRecords', (req, res) => {
 		const StreamName = "stream_" + new Date().setHours(0, 0, 0, 0); 
 		
 		// Check if this stream is Active if not create a new Stream.
 		kinesis.describeStream({ StreamName }, (err, data) => {
 			// everything goes well here, just check for active status and push records
-			 if (data.StreamDescription.StreamStatus === 'ACTIVE') {
+			 if (data && data.StreamDescription.StreamStatus === 'ACTIVE') {
 				// PUT RECORDs in stream
 				if (req.body.data.length > 500) {
 					res.status(413).send({ message: 'allowed data length is 500 per second'});
 				} else {
 					const structureData = getStructureData(req.body.data, StreamName);
+					console.log('structureData:', structureData);
 					const putRecords_PARAM = {
 						Records: structureData,
 						StreamName
@@ -58,6 +70,7 @@ app.post('/putRecords', (req, res) => {
 											Records: structureData,
 											StreamName
 										}
+										console.log('structureData:', putRecords_PARAM);
 										kinesis.putRecords(putRecords_PARAM, (err, data) => {
 											if(err) res.status(400).send({ message: `error while inserting data in kinesis data stream: ${err}`});
 											else res.status(200).send({ message: `data has successfully inserted in  kinesis data stream: ${data}`}) 
@@ -89,5 +102,6 @@ function getStructureData(data) {
 }
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+
 
 
