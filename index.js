@@ -24,6 +24,17 @@ app.get('/getStream', (req, res) => {
 });
 
 
+app.get('/getStream', (req, res) => {
+        kinesis.describeStream({ StreamName: 'stream_1547490600000' }, (err, data) => {
+                if (err) {
+                        res.send(err);
+                } else {
+                        res.send(data);
+                }
+        });
+});
+
+
 app.post('/putRecords', (req, res) => {
 		// const StreamName = "stream_" + new Date().setHours(0, 0, 0, 0); 
 		
@@ -36,6 +47,7 @@ app.post('/putRecords', (req, res) => {
 					res.status(413).send({ message: 'allowed data length is 500 per second'});
 				} else {
 					const structureData = getStructureData(req.body.data, StreamName);
+					console.log('structureData:', structureData);
 					const putRecords_PARAM = {
 						Records: structureData,
 						StreamName
