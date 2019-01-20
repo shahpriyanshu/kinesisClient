@@ -79,10 +79,9 @@ app.post('/putRecords', (req, res) => {
 							})
 						}
 					})
-				} else {
-					res.status(400).send({ message: "error while processing record"});
-				}
-
+				} else if (err && err.statusCode !== 400) {
+					res.staus(500).send({ message: "error while processing record"});
+				} 
 			})
 });
 
@@ -104,7 +103,5 @@ function getStructureData(data) {
 }
 
 app.listen(port, () => console.log(`Example app listening on port ${port}!`))
-
-
 
 
